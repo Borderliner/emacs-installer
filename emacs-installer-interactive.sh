@@ -233,7 +233,7 @@ build_install() {
 
   if [[ "${mode}" == "tty" ]]; then
     info "First pass (serial) bootstrap for TTY (avoids VPATH race)…"
-    make -j1 bootstrap NATIVE_FULL_AOT=1
+    make -j"${MAKE_JOBS}" bootstrap NATIVE_FULL_AOT=1
   fi
 
   info "Building ${mode} (-j${MAKE_JOBS})…"
