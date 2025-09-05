@@ -17,6 +17,11 @@ if ! command -v apt >/dev/null 2>&1; then
   exit 1
 fi
 
+# Script directory (for bundled .emacs.d detection)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HAVE_BUNDLED_EMACSD=0
+[[ -d "${SCRIPT_DIR}/.emacs.d" ]] && HAVE_BUNDLED_EMACSD=1
+
 # =============== tiny prompts ===============
 prompt_default() {
   local prompt="$1" default="$2" var
@@ -53,7 +58,6 @@ choose_mode() {
     *) warn "Invalid choice; defaulting to 'both'" >&2; printf '%s\n' both ;;
   esac
 }
-
 
 detect_gccjit_majors() {
   dpkg -l | awk '/libgccjit-[0-9]+-dev/ {print $2}' | sed -E 's/.*libgccjit-([0-9]+)-dev.*/\1/' | sort -u
@@ -100,6 +104,16 @@ DEFAULT_WORKDIR="$(mktemp -d)"
 WORKDIR="$(prompt_default "Working directory (temp build dir)" "${DEFAULT_WORKDIR}")"
 mkdir -p "${WORKDIR}"
 
+# Ask about copying bundled .emacs.d during setup (if present)
+COPY_EMACSD="N"
+if (( HAVE_BUNDLED_EMACSD )); then
+  if yesno "Found bundled .emacs.d next to this script. Copy it to \$HOME/.emacs.d?" "Y"; then
+    COPY_EMACSD="Y"
+  else
+    COPY_EMACSD="N"
+  fi
+fi
+
 bold ""
 bold "Summary"
 echo "  Emacs version : ${EMACS_VER}"
@@ -108,6 +122,11 @@ echo "  GCC major     : ${GCC_VER}"
 echo "  Prefix base   : ${PREFIX_BASE}"
 echo "  Bin dir       : ${BIN_DIR}"
 echo "  Work dir      : ${WORKDIR}"
+if (( HAVE_BUNDLED_EMACSD )); then
+  echo "  Copy .emacs.d : ${COPY_EMACSD}"
+else
+  echo "  Copy .emacs.d : (no bundled .emacs.d detected)"
+fi
 bold ""
 
 yesno "Proceed with these settings?" "Y" || { info "Aborted."; exit 0; }
@@ -123,17 +142,22 @@ export DEBIAN_FRONTEND=noninteractive
 sudo apt update
 sudo apt install -y \
   build-essential pkg-config autoconf automake texinfo \
-  curl ca-certificates git
+  curl ca-certificates git rsync
 
 sudo apt install -y "gcc-${GCC_VER}" "libgccjit-${GCC_VER}-dev"
 
-# small, useful libs
+# common libs
 sudo apt install -y \
   zlib1g-dev libgnutls28-dev libxml2-dev libjansson-dev libtree-sitter-dev
 
+# GUI/image deps
 if [[ "${MODE}" == "pgtk" || "${MODE}" == "both" ]]; then
-  sudo apt install -y libgtk-3-dev libcairo2-dev libharfbuzz-dev libpango1.0-dev
+  sudo apt install -y \
+    libgtk-3-dev libcairo2-dev libharfbuzz-dev libpango1.0-dev \
+    libgif-dev libjpeg-dev libpng-dev libtiff-dev librsvg2-dev libxpm-dev
 fi
+
+# TTY deps
 if [[ "${MODE}" == "tty" || "${MODE}" == "both" ]]; then
   sudo apt install -y libncurses-dev
 fi
@@ -141,16 +165,19 @@ fi
 # =============== fetch source ===============
 cd "${WORKDIR}"
 TARBALL="emacs-${EMACS_VER}.tar.xz"
-URL="https://ftp.gnu.org/gnu/emacs/${TARBALL}"
+URL="http://ftpmirror.gnu.org/emacs/${TARBALL}"
 
 info "Downloading Emacs ${EMACS_VER}…"
-curl -fsSL "${URL}" -o "${TARBALL}"
+if command -v wget >/dev/null 2>&1; then
+  wget -O "${TARBALL}" "${URL}"
+else
+  curl -fL --progress-bar "${URL}" -o "${TARBALL}"
+fi
 tar xf "${TARBALL}"
 SRCDIR="${WORKDIR}/emacs-${EMACS_VER}"
 
 # =============== configure flag sets ===============
 COMMON_FLAGS=(
-  "--without-all"
   "--with-native-compilation"
   "--with-threads"
   "--with-modules"
@@ -158,10 +185,11 @@ COMMON_FLAGS=(
   "--with-xml2"
   "--with-tree-sitter"
   "--with-zlib"
-  # strip images/GUI extras
-  "--with-gif=no" "--with-jpeg=no" "--with-png=no" "--with-tiff=no"
-  "--with-rsvg=no" "--with-xpm=no"
-  "--without-x" "--without-sound" "--without-dbus" "--without-gsettings" "--without-xwidgets"
+  "--without-x"
+  "--without-sound"
+  "--without-dbus"
+  "--without-gsettings"
+  "--without-xwidgets"
 )
 
 configure_build() {
@@ -172,8 +200,23 @@ configure_build() {
   rm -f config.cache
 
   local flags=("${COMMON_FLAGS[@]}")
+
   if [[ "${mode}" == "pgtk" ]]; then
-    flags+=("--with-pgtk" "--with-toolkit-scroll-bars")
+    flags+=(
+      "--with-pgtk"
+      "--with-toolkit-scroll-bars"
+      "--with-cairo"
+      "--with-gif" "--with-jpeg" "--with-png" "--with-tiff"
+      "--with-rsvg" "--with-xpm"
+    )
+  elif [[ "${mode}" == "tty" ]]; then
+    flags+=(
+      "--without-all"
+      "--with-modules" "--with-native-compilation" "--with-zlib"
+      "--with-gnutls" "--with-xml2" "--with-tree-sitter"
+      "--with-gif=no" "--with-jpeg=no" "--with-png=no" "--with-tiff=no"
+      "--with-rsvg=no" "--with-xpm=no" "--with-cairo=no"
+    )
   fi
 
   info "Configuring (${mode})…"
@@ -232,6 +275,14 @@ fi
 [[ "${MODE}" == "pgtk" || "${MODE}" == "both" ]] && verify_bin "${BIN_DIR}/emacs" "PGTK build"
 [[ "${MODE}" == "tty"  || "${MODE}" == "both" ]] && verify_bin "${BIN_DIR}/emacs-tty" "TTY build"
 
+# =============== optional config copy (from earlier choice) ===============
+if (( HAVE_BUNDLED_EMACSD )) && [[ "${COPY_EMACSD}" == "Y" ]]; then
+  info "Copying .emacs.d → \$HOME/.emacs.d"
+  rsync -a --delete "${SCRIPT_DIR}/.emacs.d/" "$HOME/.emacs.d/"
+else
+  info "Skipping .emacs.d copy."
+fi
+
 bold ""
 bold "============================================================"
 bold "Success!"
@@ -244,13 +295,6 @@ echo "  echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.bashrc"
 echo ""
 echo "If you see 'libgccjit.so not found' at runtime, add (adjust GCC ${GCC_VER} if needed):"
 echo "  echo 'export LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/${GCC_VER}:\$LD_LIBRARY_PATH' >> ~/.bashrc"
-echo ""
-echo "Optional minimal ~/.emacs.d/early-init.el:"
-cat <<'EOL'
-  (setq package-enable-at-startup nil
-        native-comp-async-report-warnings-errors 'silent
-        inhibit-startup-message t)
-EOL
 echo ""
 bold "--- Fish shell users ---"
 echo "Add to PATH:"
