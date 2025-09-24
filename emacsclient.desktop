@@ -1,0 +1,18 @@
+[Desktop Entry]
+Name=Emacs (Client + Daemon)
+GenericName=Text Editor
+Comment=Edit text files and more with Emacs in mode with daemon running in background
+Keywords=Text;Editor;Development;IDE;
+Exec=sh -c '$HOME/.local/bin/emacsclient -c -a "env DISPLAY=$DISPLAY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS $HOME/.local/bin/emacs" %F'
+Icon=emacs
+Terminal=false
+Type=Application
+Categories=Development;TextEditor;IDE;
+MimeType=text/plain;text/x-chdr;text/x-csrc;text/x-c++hdr;text/x-c++src;text/x-java;text/x-makefile;text/x-python;text/x-shellscript;text/x-script;text/x-tex;text/xml;text/x-markdown;text/x-csv;text/html;application/x-shellscript;application/x-perl;application/x-php;application/xml;inode/directory;
+StartupWMClass=Emacs
+StartupNotify=true
+Actions=new-window;terminal;
+
+[Desktop Action new-window]
+Name=Open New Window
+Exec=sh -c '$HOME/.local/bin/emacsclient -c -n -a "env DISPLAY=$DISPLAY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS $HOME/.local/bin/emacs"'

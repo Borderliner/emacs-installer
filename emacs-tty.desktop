@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=Emacs (Terminal)
+GenericName=Text Editor
+Comment=Edit text files and more with Emacs on terminal
+Keywords=Text;Editor;Development;IDE;
+Exec=sh -c '$HOME/.local/bin/emacs -nw %F'
+Icon=emacs
+Terminal=true
+Type=Application
+Categories=Development;TextEditor;IDE;
+MimeType=text/plain;text/x-chdr;text/x-csrc;text/x-c++hdr;text/x-c++src;text/x-java;text/x-makefile;text/x-python;text/x-shellscript;text/x-script;text/x-tex;text/xml;text/x-markdown;text/x-csv;text/html;application/x-shellscript;application/x-perl;application/x-php;application/xml;inode/directory;
+StartupWMClass=Emacs
+StartupNotify=false
+
