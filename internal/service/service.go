@@ -95,8 +95,6 @@ Type=%s
 ExecStart=%s --fg-daemon
 ExecStop=%s --no-wait --eval "(kill-emacs)"
 Restart=on-failure
-# Let Emacs see a login-like environment.
-Environment=SSH_AUTH_SOCK=%%t/keyring/ssh
 
 [Install]
 WantedBy=default.target

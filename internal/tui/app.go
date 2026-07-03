@@ -228,6 +228,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.stop()
 			m.quitting = true
 			return m, tea.Quit
+		case "q":
+			if m.step != stepInstall {
+				m.stop()
+				m.quitting = true
+				return m, tea.Quit
+			}
 		}
 		return m.handleKey(msg)
 
@@ -309,9 +315,15 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case stepReview:
 		return m.reviewKey(msg)
 	case stepInstall:
-		if msg.String() == "q" {
-			return m, nil // ignore; use ctrl+c to abort a running build
+		// Let the user scroll back through the build log; ignore everything
+		// else (use ctrl+c to abort a running build).
+		switch msg.String() {
+		case "up", "down", "k", "j", "pgup", "pgdown", "home", "end":
+			var cmd tea.Cmd
+			m.logView, cmd = m.logView.Update(msg)
+			return m, cmd
 		}
+		return m, nil
 	case stepDone, stepError:
 		m.quitting = true
 		return m, tea.Quit

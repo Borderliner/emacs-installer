@@ -103,8 +103,11 @@ func ApplyUser(specs []FileSpec, cmds []Command, emit func(string)) error {
 				emit(ln)
 			}
 		}
+		// User-level integration (enabling a --user service, loading a launchd
+		// agent) is best-effort: a missing session bus must not fail an install
+		// whose files are already in place. Warn and carry on.
 		if err != nil {
-			return fmt.Errorf("%s: %w", c.Argv[0], err)
+			emit(fmt.Sprintf("⚠ %s failed (%v) — enable it manually later", c.Argv[0], err))
 		}
 	}
 	return nil
