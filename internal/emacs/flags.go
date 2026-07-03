@@ -1,6 +1,6 @@
 package emacs
 
-import "github.com/hajianpour/emacs-installer/internal/pkg"
+import "github.com/Borderliner/emacs-installer/internal/pkg"
 
 // Env describes the host facts that decide which build features make sense and
 // what their defaults should be. It is assembled once the target version is

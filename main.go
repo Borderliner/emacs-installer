@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hajianpour/emacs-installer/internal/tui"
+	"github.com/Borderliner/emacs-installer/internal/tui"
 )
 
 // version is overridden at build time via -ldflags (see the Makefile).

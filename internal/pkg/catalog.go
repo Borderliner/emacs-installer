@@ -1,6 +1,6 @@
 package pkg
 
-import "github.com/hajianpour/emacs-installer/internal/sys"
+import "github.com/Borderliner/emacs-installer/internal/sys"
 
 // Logical dependency keys. Compile flags (internal/emacs) reference these; the
 // catalog below maps each to concrete package names per distribution family.

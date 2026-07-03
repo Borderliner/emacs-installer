@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hajianpour/emacs-installer/internal/action"
-	"github.com/hajianpour/emacs-installer/internal/desktop"
-	"github.com/hajianpour/emacs-installer/internal/pkg"
-	"github.com/hajianpour/emacs-installer/internal/service"
-	"github.com/hajianpour/emacs-installer/internal/sys"
+	"github.com/Borderliner/emacs-installer/internal/action"
+	"github.com/Borderliner/emacs-installer/internal/desktop"
+	"github.com/Borderliner/emacs-installer/internal/pkg"
+	"github.com/Borderliner/emacs-installer/internal/service"
+	"github.com/Borderliner/emacs-installer/internal/sys"
 )
 
 // Config is the full set of installation decisions gathered by the wizard. It

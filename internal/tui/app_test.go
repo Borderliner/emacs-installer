@@ -5,8 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/hajianpour/emacs-installer/internal/emacs"
-	"github.com/hajianpour/emacs-installer/internal/pkg"
+	"github.com/Borderliner/emacs-installer/internal/emacs"
+	"github.com/Borderliner/emacs-installer/internal/pkg"
 )
 
 func key(s string) tea.KeyMsg {

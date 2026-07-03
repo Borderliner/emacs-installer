@@ -1,4 +1,4 @@
-module github.com/hajianpour/emacs-installer
+module github.com/Borderliner/emacs-installer
 
 go 1.24.2
 

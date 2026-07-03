@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/hajianpour/emacs-installer/internal/sys"
+	"github.com/Borderliner/emacs-installer/internal/sys"
 )
 
 // Req is one dependency requirement, satisfied by the first of its alternative

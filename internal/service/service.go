@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hajianpour/emacs-installer/internal/action"
-	"github.com/hajianpour/emacs-installer/internal/sys"
+	"github.com/Borderliner/emacs-installer/internal/action"
+	"github.com/Borderliner/emacs-installer/internal/sys"
 )
 
 // Params describes the daemon service to generate.

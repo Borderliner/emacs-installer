@@ -1,6 +1,6 @@
 package pkg
 
-import "github.com/hajianpour/emacs-installer/internal/sys"
+import "github.com/Borderliner/emacs-installer/internal/sys"
 
 // Resolution is the outcome of turning a set of logical dependencies into
 // concrete package names for a given distribution.

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/hajianpour/emacs-installer/internal/action"
+	"github.com/Borderliner/emacs-installer/internal/action"
 )
 
 // Generate returns the .desktop files for a standalone Emacs and an Emacs

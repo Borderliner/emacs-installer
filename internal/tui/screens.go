@@ -7,10 +7,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/hajianpour/emacs-installer/internal/emacs"
-	"github.com/hajianpour/emacs-installer/internal/pkg"
-	"github.com/hajianpour/emacs-installer/internal/service"
-	"github.com/hajianpour/emacs-installer/internal/sys"
+	"github.com/Borderliner/emacs-installer/internal/emacs"
+	"github.com/Borderliner/emacs-installer/internal/pkg"
+	"github.com/Borderliner/emacs-installer/internal/service"
+	"github.com/Borderliner/emacs-installer/internal/sys"
 )
 
 // --- shared layout ----------------------------------------------------------
