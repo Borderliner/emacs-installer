@@ -21,7 +21,10 @@ os=$(uname -s)
 case "$os" in
 	Linux) os=linux ;;
 	Darwin) os=darwin ;;
-	*) err "unsupported OS '$os' (this build targets Linux and macOS; see the README for Windows)" ;;
+	FreeBSD) os=freebsd ;;
+	OpenBSD) os=openbsd ;;
+	NetBSD) os=netbsd ;;
+	*) err "unsupported OS '$os'" ;;
 esac
 
 arch=$(uname -m)
@@ -41,7 +44,9 @@ fi
 dl() { # url dest
 	if have curl; then curl -fsSL "$1" -o "$2"
 	elif have wget; then wget -qO "$2" "$1"
-	else err "need curl or wget"; fi
+	elif have fetch; then fetch -qo "$2" "$1"   # FreeBSD base
+	elif have ftp; then ftp -o "$2" "$1"        # OpenBSD/NetBSD base (speaks http)
+	else err "need curl, wget, fetch or ftp"; fi
 }
 
 tmp=$(mktemp -d)
