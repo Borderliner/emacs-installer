@@ -1,0 +1,14 @@
+# Build artifacts
+/emacs-installer
+/dist/
+/build/
+*.test
+*.out
+
+# Go
+/vendor/
+
+# Editor
+*~
+\#*\#
+.\#*
