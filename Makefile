@@ -26,10 +26,11 @@ clean:
 	rm -f $(BINARY)
 	rm -rf dist
 
-# Cross-compile static-ish binaries for release.
+# Cross-compile self-contained (CGO-free) binaries for release.
 dist: clean
 	@mkdir -p dist
-	GOOS=linux  GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o dist/$(BINARY)-linux-amd64  .
-	GOOS=linux  GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o dist/$(BINARY)-linux-arm64  .
-	GOOS=darwin GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o dist/$(BINARY)-darwin-amd64 .
-	GOOS=darwin GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o dist/$(BINARY)-darwin-arm64 .
+	CGO_ENABLED=0 GOOS=linux  GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o dist/$(BINARY)-linux-amd64  .
+	CGO_ENABLED=0 GOOS=linux  GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o dist/$(BINARY)-linux-arm64  .
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o dist/$(BINARY)-darwin-amd64 .
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o dist/$(BINARY)-darwin-arm64 .
+	@cd dist && sha256sum * > checksums.txt

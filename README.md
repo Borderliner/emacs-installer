@@ -1,5 +1,8 @@
 # emacs-installer
 
+[![CI](https://github.com/Borderliner/emacs-installer/actions/workflows/ci.yml/badge.svg)](https://github.com/Borderliner/emacs-installer/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Borderliner/emacs-installer?sort=semver)](https://github.com/Borderliner/emacs-installer/releases/latest)
+
 A good-looking terminal UI that **compiles GNU Emacs from source and installs
 it** for you, across the mainstream Linux distributions (and macOS, best-effort).
 
@@ -52,7 +55,20 @@ later (see [Uninstalling](#uninstalling)).
 
 ## Install
 
-Grab a release binary, or build it yourself (needs Go 1.24+):
+### Download a prebuilt binary
+
+Grab the binary for your platform from the
+[latest release](https://github.com/Borderliner/emacs-installer/releases/latest)
+(`linux`/`darwin`, `amd64`/`arm64`), then run it — it's self-contained:
+
+```sh
+chmod +x emacs-installer-linux-amd64
+./emacs-installer-linux-amd64
+```
+
+Checksums are published alongside each release as `checksums.txt`.
+
+### Or build from source (needs Go 1.24+)
 
 ```sh
 make build          # produces ./emacs-installer
