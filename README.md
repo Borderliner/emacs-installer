@@ -55,6 +55,17 @@ later (see [Uninstalling](#uninstalling)).
 
 ## Install
 
+### Quick install (one-liner)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Borderliner/emacs-installer/main/install.sh | sh
+```
+
+Detects your OS/arch, verifies the checksum, and drops the binary on your PATH
+(`/usr/local/bin`, falling back to `~/.local/bin` when you're not root). Override
+with `VERSION=v0.1.0` or `BINDIR=~/bin`, e.g.
+`curl -fsSL …/install.sh | BINDIR=~/.local/bin sh`.
+
 ### Download a prebuilt binary
 
 Grab the binary for your platform from the
