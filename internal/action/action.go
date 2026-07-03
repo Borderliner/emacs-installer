@@ -18,7 +18,7 @@ type FileSpec struct {
 	Path    string
 	Content string
 	Mode    os.FileMode
-	System  bool // true → written by the privileged script
+	System  bool   // true → written by the privileged script
 	Label   string // short human description for logs
 }
 

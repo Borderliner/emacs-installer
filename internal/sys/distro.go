@@ -13,14 +13,14 @@ import (
 type Family string
 
 const (
-	FamilyDebian  Family = "debian"  // apt: Debian, Ubuntu, Mint, Pop!_OS, ...
-	FamilyFedora  Family = "fedora"  // dnf: Fedora, RHEL, Rocky, Alma, CentOS
-	FamilyArch    Family = "arch"    // pacman: Arch, Manjaro, EndeavourOS, ...
-	FamilySUSE    Family = "suse"    // zypper: openSUSE, SLES
-	FamilyAlpine  Family = "alpine"  // apk
-	FamilyVoid    Family = "void"    // xbps
-	FamilyGentoo  Family = "gentoo"  // portage/emerge
-	FamilyMacOS   Family = "macos"   // homebrew
+	FamilyDebian  Family = "debian" // apt: Debian, Ubuntu, Mint, Pop!_OS, ...
+	FamilyFedora  Family = "fedora" // dnf: Fedora, RHEL, Rocky, Alma, CentOS
+	FamilyArch    Family = "arch"   // pacman: Arch, Manjaro, EndeavourOS, ...
+	FamilySUSE    Family = "suse"   // zypper: openSUSE, SLES
+	FamilyAlpine  Family = "alpine" // apk
+	FamilyVoid    Family = "void"   // xbps
+	FamilyGentoo  Family = "gentoo" // portage/emerge
+	FamilyMacOS   Family = "macos"  // homebrew
 	FamilyUnknown Family = "unknown"
 )
 
@@ -56,7 +56,7 @@ var idToFamily = map[string]Family{
 	"sles": FamilySUSE, "sled": FamilySUSE, "suse": FamilySUSE,
 	// Others
 	"alpine": FamilyAlpine, "postmarketos": FamilyAlpine,
-	"void": FamilyVoid,
+	"void":   FamilyVoid,
 	"gentoo": FamilyGentoo, "funtoo": FamilyGentoo,
 }
 

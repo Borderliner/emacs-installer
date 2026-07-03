@@ -25,7 +25,7 @@ type Manager struct {
 
 	install   func(pkgs []string) string // shell snippet to install packages
 	refresh   func() string              // shell snippet to refresh repo metadata ("" if none)
-	available func(pkg string) bool       // repo availability probe (nil = assume available)
+	available func(pkg string) bool      // repo availability probe (nil = assume available)
 
 	cache map[string]bool
 }
@@ -111,8 +111,10 @@ func join(pkgs []string) string { return strings.Join(pkgs, " ") }
 var managers = map[sys.Family]*Manager{
 	sys.FamilyDebian: {
 		Name: "apt", Escalate: true,
-		refresh:   func() string { return "apt-get update -qq" },
-		install:   func(p []string) string { return "DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends " + join(p) },
+		refresh: func() string { return "apt-get update -qq" },
+		install: func(p []string) string {
+			return "DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends " + join(p)
+		},
 		available: func(pkg string) bool { return exitOK("apt-cache", "show", pkg) },
 	},
 	sys.FamilyFedora: {
@@ -127,9 +129,11 @@ var managers = map[sys.Family]*Manager{
 	},
 	sys.FamilySUSE: {
 		Name: "zypper", Escalate: true,
-		refresh:   func() string { return "zypper --non-interactive refresh" },
-		install:   func(p []string) string { return "zypper --non-interactive install --no-recommends " + join(p) },
-		available: func(pkg string) bool { return exitOK("zypper", "--non-interactive", "search", "--match-exact", "--type", "package", pkg) },
+		refresh: func() string { return "zypper --non-interactive refresh" },
+		install: func(p []string) string { return "zypper --non-interactive install --no-recommends " + join(p) },
+		available: func(pkg string) bool {
+			return exitOK("zypper", "--non-interactive", "search", "--match-exact", "--type", "package", pkg)
+		},
 	},
 	sys.FamilyAlpine: {
 		Name: "apk", Escalate: true,

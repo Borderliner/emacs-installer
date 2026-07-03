@@ -182,23 +182,23 @@ func Toolkits(env Env) []Toolkit {
 	if env.OS == "darwin" {
 		return []Toolkit{
 			{Key: "ns", Title: "NextStep (native macOS.app)", GUI: true,
-				Help: "Native Cocoa GUI — builds a proper macOS application.",
+				Help:      "Native Cocoa GUI — builds a proper macOS application.",
 				Configure: []string{"--with-ns"}},
 			{Key: "nox", Title: "No GUI — terminal only", GUI: false,
-				Help: "Terminal (-nw) build with no windowing system.",
+				Help:      "Terminal (-nw) build with no windowing system.",
 				Configure: []string{"--without-ns", "--without-x"}},
 		}
 	}
 	gtk := Toolkit{Key: "gtk3", Title: "GTK 3", GUI: true,
-		Help: "Modern GTK 3 toolkit: best HiDPI, GTK themes and input methods. The safe default on X11.",
+		Help:      "Modern GTK 3 toolkit: best HiDPI, GTK themes and input methods. The safe default on X11.",
 		Configure: []string{"--with-x-toolkit=gtk3", "--with-cairo"},
 		Deps:      []string{pkg.DepGtk3, pkg.DepCairo}}
 	pgtk := Toolkit{Key: "pgtk", Title: "Pure GTK (Wayland-native)", GUI: true,
-		Help: "Renders entirely through GTK, so it runs natively on Wayland without XWayland. Recommended on a Wayland session.",
+		Help:      "Renders entirely through GTK, so it runs natively on Wayland without XWayland. Recommended on a Wayland session.",
 		Configure: []string{"--with-pgtk", "--with-cairo"},
 		Deps:      []string{pkg.DepGtk3, pkg.DepCairo}}
 	nox := Toolkit{Key: "nox", Title: "No GUI — terminal only", GUI: false,
-		Help: "Terminal (-nw) build with no X/Wayland dependencies. Smallest footprint.",
+		Help:      "Terminal (-nw) build with no X/Wayland dependencies. Smallest footprint.",
 		Configure: []string{"--without-x"}}
 
 	if env.Wayland {
