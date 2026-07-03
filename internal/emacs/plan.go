@@ -76,6 +76,7 @@ func (c Config) BuildPhases() []Phase {
 	if up, ok := c.userPhase(); ok {
 		phases = append(phases, up)
 	}
+	phases = append(phases, c.manifestPhase())
 	return phases
 }
 

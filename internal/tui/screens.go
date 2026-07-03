@@ -32,6 +32,8 @@ func (m Model) View() string {
 		return m.serviceView()
 	case stepReview:
 		return m.reviewView()
+	case stepUninstall:
+		return m.uninstallView()
 	case stepInstall:
 		return m.installView()
 	case stepDone:
@@ -51,11 +53,15 @@ func (m Model) sysSummary() string {
 // frame composes the header, breadcrumb, a bordered card around body, and footer.
 func (m Model) frame(body, footer string) string {
 	cw := m.contentWidth()
+	nav := "  " + breadcrumb(crumbs, crumbIndex(m.step))
+	if m.uninstall {
+		nav = "  " + stErr.Render("● uninstall / cleanup")
+	}
 	parts := []string{
 		"",
 		stTitle.Render("  Emacs Installer"),
 		"  " + stSubtle.Render(m.sysSummary()),
-		"  " + breadcrumb(crumbs, crumbIndex(m.step)),
+		nav,
 		"",
 		stCard.Width(cw).Render(body),
 	}
@@ -105,6 +111,9 @@ func (m Model) welcomeView() string {
 	}
 	if m.dryRun {
 		b.WriteString("\n" + stInfo.Render("● Dry-run mode: commands are shown, nothing is changed."))
+	}
+	if m.existingInstall {
+		b.WriteString("\n" + stInfo.Render("● An existing install was found at "+m.prefix+" — re-run with --uninstall to remove it."))
 	}
 	if m.verLoading {
 		b.WriteString("\n\n" + m.spinner.View() + " " + stMuted.Render("discovering available versions…"))
@@ -515,7 +524,11 @@ func (m Model) installView() string {
 		title = m.phases[m.phaseIdx].Title
 	}
 	pct := int(m.overallFrac()*100 + 0.5)
-	b.WriteString(stHeading.Render("Installing Emacs") +
+	head := "Installing Emacs"
+	if m.uninstall {
+		head = "Removing Emacs"
+	}
+	b.WriteString(stHeading.Render(head) +
 		stMuted.Render(fmt.Sprintf("   step %d of %d", min(m.phaseIdx+1, len(m.phases)), len(m.phases))) + "\n\n")
 	b.WriteString(m.progress.ViewAs(m.overallFrac()) + stText.Render(fmt.Sprintf("  %3d%%", pct)) + "\n\n")
 	b.WriteString(m.spinner.View() + " " + stSelected.Render(title) + "\n")
@@ -533,6 +546,9 @@ func (m Model) installView() string {
 // --- done / error -----------------------------------------------------------
 
 func (m Model) doneView() string {
+	if m.uninstall {
+		return m.uninstallDoneView()
+	}
 	var b strings.Builder
 	head := "Emacs installed"
 	if m.dryRun {
@@ -562,7 +578,11 @@ func (m Model) doneView() string {
 
 func (m Model) errorView() string {
 	var b strings.Builder
-	b.WriteString(stErr.Render("✗ Installation failed") + "\n\n")
+	what := "Installation failed"
+	if m.uninstall {
+		what = "Uninstall failed"
+	}
+	b.WriteString(stErr.Render("✗ "+what) + "\n\n")
 	if m.installErr != nil {
 		b.WriteString(stText.Render(wrap(m.installErr.Error(), m.bodyWidth())) + "\n")
 	}
@@ -574,6 +594,103 @@ func (m Model) errorView() string {
 	for _, l := range tail {
 		b.WriteString(stSubtle.Render("  "+l) + "\n")
 	}
+	return m.frame(b.String(), joinHints(keyHint("enter/q", "quit")))
+}
+
+// --- uninstall --------------------------------------------------------------
+
+func (m Model) uninstallKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if !emacs.InstallPresent(m.manifest) {
+		m.quitting = true
+		return m, tea.Quit
+	}
+	switch msg.String() {
+	case " ", "space", "x":
+		m.deleteSource = !m.deleteSource
+	case "enter":
+		u := emacs.UninstallConfig{
+			Info:         m.info,
+			Manifest:     m.manifest,
+			DeleteSource: m.deleteSource,
+			DryRun:       m.dryRun,
+		}
+		m.phases = u.BuildPhases()
+		m.logLines = nil
+		m.step = stepInstall
+		m.relayout()
+		return m.startPhase(0)
+	}
+	return m, nil
+}
+
+func (m Model) uninstallView() string {
+	var b strings.Builder
+	b.WriteString(stHeading.Render("Uninstall & clean up") + "\n\n")
+
+	if !emacs.InstallPresent(m.manifest) {
+		b.WriteString(stText.Render("No Emacs installation was found at ") + stKey.Render(m.manifest.Prefix) + stText.Render("."))
+		b.WriteString("\n\n" + stMuted.Render("Nothing to remove."))
+		return m.frame(b.String(), joinHints(keyHint("q", "quit")))
+	}
+
+	add := func(k, v string) {
+		b.WriteString("  " + stSubtle.Render(fmt.Sprintf("%-12s", k)) + " " + stText.Render(v) + "\n")
+	}
+	b.WriteString(stText.Render("The following will be removed:") + "\n\n")
+	ver := m.manifest.Version
+	if ver == "" {
+		ver = "(unknown)"
+	}
+	add("Emacs", "v"+ver+" in "+m.manifest.Prefix)
+	if m.manifest.Symlink {
+		add("Symlinks", "/usr/local/bin/emacs, emacsclient, …")
+	}
+	if m.manifest.Desktop {
+		add("Launchers", ".desktop files & icons")
+	}
+	if m.manifest.Daemon {
+		add("Daemon", sys.InitSystem(m.manifest.ServiceInit).Title()+" service (stopped & disabled)")
+	}
+
+	b.WriteString("\n" + cursor(true) + checkbox(m.deleteSource, true) + " " +
+		label(true, m.deleteSource, "Also delete the downloaded source code (~/.cache/emacs-installer)") + "\n")
+
+	b.WriteString("\n" + stGood.Render("✓ ") + stSubtle.Render(wrap("Your personal Emacs config (~/.emacs.d, ~/.config/emacs) is NOT touched.", m.bodyWidth()-2)))
+
+	if !m.manifestOK {
+		b.WriteString("\n" + stWarn.Render("⚠ No install receipt found — removing by best-effort detection."))
+	}
+	if m.info.Escalation.Needed() {
+		b.WriteString("\n" + stMuted.Render(fmt.Sprintf("Root steps run via %s; you may be prompted for a password.", m.info.Escalation.Tool)))
+	}
+	if m.dryRun {
+		b.WriteString("\n" + stInfo.Render("● Dry-run: commands are shown, nothing is changed."))
+	}
+
+	act := "uninstall"
+	if m.dryRun {
+		act = "dry-run"
+	}
+	footer := joinHints(keyHint("space", "toggle source"), keyHint("enter", act), keyHint("q", "cancel"))
+	return m.frame(b.String(), footer)
+}
+
+func (m Model) uninstallDoneView() string {
+	var b strings.Builder
+	head := "Emacs removed"
+	if m.dryRun {
+		head = "Dry-run complete"
+	}
+	b.WriteString(stGood.Render("✓ "+head) + "\n\n")
+	b.WriteString(stText.Render("Emacs has been removed from ") + stKey.Render(m.manifest.Prefix) + stText.Render(".") + "\n\n")
+
+	if m.deleteSource {
+		b.WriteString(stSubtle.Render("Downloaded source: ") + stText.Render("deleted") + "\n")
+	} else {
+		b.WriteString(stSubtle.Render("Downloaded source: ") + stText.Render("kept in ~/.cache/emacs-installer") + "\n")
+	}
+	b.WriteString(stSubtle.Render("Personal config:   ") + stText.Render("left untouched (~/.emacs.d)") + "\n")
+
 	return m.frame(b.String(), joinHints(keyHint("enter/q", "quit")))
 }
 

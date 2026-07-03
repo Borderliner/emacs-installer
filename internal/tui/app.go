@@ -31,6 +31,7 @@ const (
 	stepService
 	stepReview
 	stepInstall
+	stepUninstall
 	stepDone
 	stepError
 )
@@ -59,9 +60,10 @@ func crumbIndex(s step) int {
 
 // Options configures a run of the wizard.
 type Options struct {
-	DryRun bool
-	Su     string // preferred escalation tool ("sudo"/"doas"/"")
-	Prefix string
+	DryRun    bool
+	Su        string // preferred escalation tool ("sudo"/"doas"/"")
+	Prefix    string
+	Uninstall bool // start in uninstall/cleanup mode
 }
 
 // Model is the whole wizard state.
@@ -121,6 +123,13 @@ type Model struct {
 	errCh      chan error
 	installErr error
 
+	// uninstall mode
+	uninstall       bool
+	manifest        emacs.Manifest
+	manifestOK      bool
+	deleteSource    bool
+	existingInstall bool
+
 	quitting bool
 }
 
@@ -150,7 +159,7 @@ func New(opts Options) Model {
 		}
 	}
 
-	return Model{
+	m := Model{
 		opts:       opts,
 		prefix:     opts.Prefix,
 		dryRun:     opts.DryRun,
@@ -168,9 +177,31 @@ func New(opts Options) Model {
 		inits:      inits,
 		initCursor: initCursor,
 	}
+
+	if mf, ok := emacs.LoadManifest(info.Home); ok {
+		m.existingInstall = emacs.InstallPresent(mf)
+	} else if _, err := os.Stat(opts.Prefix); err == nil {
+		m.existingInstall = true
+	}
+
+	if opts.Uninstall {
+		m.uninstall = true
+		m.verLoading = false
+		mf, ok := emacs.LoadManifest(info.Home)
+		if !ok {
+			mf = emacs.DeriveManifest(info, opts.Prefix)
+		}
+		m.manifest = mf
+		m.manifestOK = ok
+		m.step = stepUninstall
+	}
+	return m
 }
 
 func (m Model) Init() tea.Cmd {
+	if m.uninstall {
+		return m.spinner.Tick
+	}
 	return tea.Batch(m.spinner.Tick, loadVersions())
 }
 
@@ -314,6 +345,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.serviceKey(msg)
 	case stepReview:
 		return m.reviewKey(msg)
+	case stepUninstall:
+		return m.uninstallKey(msg)
 	case stepInstall:
 		// Let the user scroll back through the build log; ignore everything
 		// else (use ctrl+c to abort a running build).

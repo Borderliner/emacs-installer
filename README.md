@@ -47,6 +47,9 @@ The wizard walks you through six steps and then runs the pipeline:
    Emacs daemon on startup so `emacsclient` just works — on `systemd`, `OpenRC`,
    `runit`, `SysVinit`, `dinit`, or macOS `launchd`.
 
+It records what it installed, so `--uninstall` can cleanly reverse all of it
+later (see [Uninstalling](#uninstalling)).
+
 ## Install
 
 Grab a release binary, or build it yourself (needs Go 1.24+):
@@ -68,6 +71,7 @@ make build          # produces ./emacs-installer
 | Flag         | Default      | Meaning                                              |
 |--------------|--------------|------------------------------------------------------|
 | `--dry-run`  | off          | Print commands instead of executing them             |
+| `--uninstall`| off          | Remove a previous install and clean up (see below)   |
 | `--su`       | auto         | Force `sudo` or `doas` for privileged steps          |
 | `--prefix`   | `/opt/emacs` | Installation prefix                                  |
 | `--version`  | —            | Print version and exit                               |
@@ -105,9 +109,22 @@ emacsclient -c        # attach a GUI frame to the daemon
 /opt/emacs/bin/emacs  # always works, symlink or not
 ```
 
-To remove a build: `sudo rm -rf /opt/emacs`, delete the `/usr/local/bin/emacs*`
-symlinks, the `.desktop` files, and disable the service the same way your init
-system enables it.
+## Uninstalling
+
+```sh
+./emacs-installer --uninstall            # or add --dry-run to preview
+```
+
+The installer records a small receipt after each install
+(`~/.local/state/emacs-installer/manifest.json`) and uses it to remove exactly
+what it created: the `/opt/emacs` binaries, the `/usr/local/bin` symlinks (only
+if they still point back into the prefix), the `.desktop` launchers and icons,
+and the daemon service — which it also **stops and disables** for your init
+system first. If the receipt is missing it falls back to best-effort detection.
+
+You're asked whether to **also delete the downloaded source** in
+`~/.cache/emacs-installer`, or keep it for a faster rebuild later. Your personal
+Emacs configuration (`~/.emacs.d`, `~/.config/emacs`) is **never** touched.
 
 ## Project layout
 

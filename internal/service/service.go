@@ -78,6 +78,55 @@ func (p Params) runDir() string {
 	return "/var/service"
 }
 
+// Teardown returns everything needed to stop, disable and remove the daemon
+// service: the file paths to delete (content is irrelevant here) and the
+// stop/disable commands to run. Items are tagged System or user exactly as in
+// Generate, so the uninstaller can route them correctly.
+func Teardown(p Params) (remove []action.FileSpec, cmds []action.Command) {
+	del := func(path string, system bool) action.FileSpec {
+		return action.FileSpec{Path: path, System: system}
+	}
+	switch p.Init {
+	case sys.InitSystemd:
+		unit := filepath.Join(p.Home, ".config/systemd/user/emacs.service")
+		return []action.FileSpec{del(unit, false)}, []action.Command{
+			{Argv: []string{"systemctl", "--user", "disable", "--now", "emacs.service"}, Label: "stop & disable daemon"},
+			{Argv: []string{"systemctl", "--user", "daemon-reload"}, Label: "reload user units"},
+		}
+	case sys.InitOpenRC:
+		return []action.FileSpec{del("/etc/init.d/emacs", true)}, []action.Command{
+			{Argv: []string{"rc-service", "emacs", "stop"}, System: true, Label: "stop daemon"},
+			{Argv: []string{"rc-update", "del", "emacs", "default"}, System: true, Label: "disable at boot"},
+		}
+	case sys.InitRunit:
+		return []action.FileSpec{
+				del(filepath.Join(p.runDir(), "emacs"), true), // supervision symlink
+				del("/etc/sv/emacs", true),                    // service directory
+			}, []action.Command{
+				{Argv: []string{"sv", "down", "emacs"}, System: true, Label: "stop daemon"},
+			}
+	case sys.InitSysV:
+		disable := `if command -v update-rc.d >/dev/null 2>&1; then update-rc.d -f emacs remove; ` +
+			`elif command -v chkconfig >/dev/null 2>&1; then chkconfig --del emacs; fi`
+		return []action.FileSpec{del("/etc/init.d/emacs", true)}, []action.Command{
+			{Argv: []string{"/etc/init.d/emacs", "stop"}, System: true, Label: "stop daemon"},
+			{Argv: []string{"sh", "-c", disable}, System: true, Label: "deregister service"},
+		}
+	case sys.InitDinit:
+		return []action.FileSpec{del("/etc/dinit.d/emacs", true)}, []action.Command{
+			{Argv: []string{"dinitctl", "stop", "emacs"}, System: true, Label: "stop daemon"},
+			{Argv: []string{"dinitctl", "disable", "emacs"}, System: true, Label: "disable service"},
+		}
+	case sys.InitLaunchd:
+		plist := filepath.Join(p.Home, "Library/LaunchAgents/gnu.emacs.daemon.plist")
+		return []action.FileSpec{del(plist, false)}, []action.Command{
+			{Argv: []string{"launchctl", "unload", "-w", plist}, Label: "unload agent"},
+		}
+	default:
+		return nil, nil
+	}
+}
+
 // --- systemd (user scope) ---------------------------------------------------
 
 func (p Params) systemd() ([]action.FileSpec, []action.Command, error) {
