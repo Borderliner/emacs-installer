@@ -43,7 +43,7 @@ Keywords=Text;Editor;Lisp;
 Name=Emacs (Client)
 GenericName=Text Editor
 Comment=Edit text in the running Emacs daemon
-Exec=%s -create-frame --alternate-editor=%s %%F
+Exec=%s -c --alternate-editor=%s %%F
 Icon=%s
 Type=Application
 Terminal=false
