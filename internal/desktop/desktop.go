@@ -12,9 +12,10 @@ import (
 )
 
 // Generate returns the .desktop files for a standalone Emacs and an Emacs
-// client. When system is true they are installed into /usr/share/applications
-// (root); otherwise into the user's ~/.local/share/applications.
-func Generate(prefix string, system bool, home string) []action.FileSpec {
+// client. When system is true they are installed into the system applications
+// directory (root) — /usr/share on Linux, /usr/local/share on the BSDs;
+// otherwise into the user's ~/.local/share/applications. osName is a GOOS value.
+func Generate(prefix string, system bool, home, osName string) []action.FileSpec {
 	bin := filepath.Join(prefix, "bin")
 	emacs := filepath.Join(bin, "emacs")
 	client := filepath.Join(bin, "emacsclient")
@@ -23,6 +24,10 @@ func Generate(prefix string, system bool, home string) []action.FileSpec {
 	dir := filepath.Join(home, ".local/share/applications")
 	if system {
 		dir = "/usr/share/applications"
+		switch osName {
+		case "freebsd", "openbsd", "netbsd":
+			dir = "/usr/local/share/applications"
+		}
 	}
 
 	emacsEntry := fmt.Sprintf(`[Desktop Entry]

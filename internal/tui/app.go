@@ -173,7 +173,7 @@ func New(opts Options) Model {
 		verLoading: true,
 		daemon:     true,
 		symlink:    true,
-		desktop:    info.OS == "linux",
+		desktop:    info.OS != "darwin",
 		inits:      inits,
 		initCursor: initCursor,
 	}

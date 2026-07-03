@@ -39,10 +39,49 @@ type Config struct {
 func (c Config) SrcDir() string { return filepath.Join(sys.CacheDir(), c.Version.Dir()) }
 
 // TarballPath is the downloaded archive.
-func (c Config) TarballPath() string { return filepath.Join(sys.CacheDir(), c.Version.Tarball()) }
+func (c Config) TarballPath() string { return filepath.Join(sys.CacheDir(), c.archiveName()) }
 
 // EmacsBin is the installed emacs executable.
 func (c Config) EmacsBin() string { return filepath.Join(c.Prefix, "bin", "emacs") }
+
+// isBSD reports whether the host is one of the supported BSDs.
+func (c Config) isBSD() bool {
+	switch c.Info.OS {
+	case "freebsd", "openbsd", "netbsd":
+		return true
+	}
+	return false
+}
+
+// makeProgram is GNU make, which Emacs requires; the BSDs ship it as `gmake`.
+func (c Config) makeProgram() string {
+	if c.isBSD() {
+		return "gmake"
+	}
+	return "make"
+}
+
+// useGzip prefers the .tar.gz release on OpenBSD, whose base `tar` cannot
+// transparently decompress .xz.
+func (c Config) useGzip() bool { return c.Info.OS == "openbsd" }
+
+func (c Config) archiveName() string {
+	if c.useGzip() {
+		return strings.TrimSuffix(c.Version.Tarball(), ".xz") + ".gz"
+	}
+	return c.Version.Tarball()
+}
+
+func (c Config) archiveURL() string {
+	if c.useGzip() {
+		return strings.TrimSuffix(c.Version.URL, ".xz") + ".gz"
+	}
+	return c.Version.URL
+}
+
+// desktopOK reports whether we generate .desktop launchers (Linux and the BSDs,
+// but not macOS which uses an .app bundle).
+func (c Config) desktopOK() bool { return c.Desktop && c.Info.OS != "darwin" }
 
 // FullConfigureArgs is the complete ./configure argument list including prefix.
 func (c Config) FullConfigureArgs() []string {
@@ -69,7 +108,7 @@ func (c Config) BuildPhases() []Phase {
 		c.downloadPhase(tarball),
 		c.extractPhase(tarball, src),
 		c.execPhase("Configure build", src, "./configure", c.FullConfigureArgs()...),
-		c.execPhase(fmt.Sprintf("Compile (make -j%d)", c.Info.Cores), src, "make", fmt.Sprintf("-j%d", c.Info.Cores)),
+		c.execPhase(fmt.Sprintf("Compile (%s -j%d)", c.makeProgram(), c.Info.Cores), src, c.makeProgram(), fmt.Sprintf("-j%d", c.Info.Cores)),
 		c.privilegedPhase("Install to "+c.Prefix, c.installScript(src)),
 	)
 
@@ -86,8 +125,8 @@ func (c Config) integration() ([]action.FileSpec, []action.Command) {
 	var specs []action.FileSpec
 	var cmds []action.Command
 
-	if c.Desktop && c.Info.OS == "linux" {
-		specs = append(specs, desktop.Generate(c.Prefix, true, c.Info.Home)...)
+	if c.desktopOK() {
+		specs = append(specs, desktop.Generate(c.Prefix, true, c.Info.Home, c.Info.OS)...)
 	}
 	if c.EnableDaemon {
 		s, cm, err := service.Generate(service.Params{
@@ -113,7 +152,7 @@ func (c Config) installScript(src string) string {
 
 	var b strings.Builder
 	b.WriteString("set -e\n")
-	fmt.Fprintf(&b, "make -C %s install\n", action.ShellQuote(src))
+	fmt.Fprintf(&b, "%s -C %s install\n", c.makeProgram(), action.ShellQuote(src))
 
 	if c.Info.OS == "darwin" && c.Selection.Toolkit == "ns" {
 		fmt.Fprintf(&b, "if [ -d %s/nextstep/Emacs.app ]; then rm -rf /Applications/Emacs.app && cp -R %s/nextstep/Emacs.app /Applications/; fi\n",
@@ -126,8 +165,12 @@ func (c Config) installScript(src string) string {
 
 	b.WriteString(action.ShellScript(specs, cmds))
 
-	if c.Desktop && c.Info.OS == "linux" {
-		b.WriteString("command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database /usr/share/applications 2>/dev/null || true\n")
+	if c.desktopOK() {
+		appdir := "/usr/share/applications"
+		if c.isBSD() {
+			appdir = "/usr/local/share/applications"
+		}
+		fmt.Fprintf(&b, "command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database %s 2>/dev/null || true\n", appdir)
 		fmt.Fprintf(&b, "command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f %s/share/icons/hicolor 2>/dev/null || true\n", c.Prefix)
 	}
 	return b.String()
@@ -194,10 +237,10 @@ func (c Config) privilegedPhase(title, script string) Phase {
 }
 
 func (c Config) downloadPhase(tarball string) Phase {
-	title := "Download " + c.Version.Tarball()
+	title := "Download " + c.archiveName()
 	if c.DryRun {
 		return Phase{Title: title, Run: func(ctx context.Context, ch chan<- Progress) error {
-			ch <- Progress{Line: "[dry-run] GET " + c.Version.URL, Fraction: 1}
+			ch <- Progress{Line: "[dry-run] GET " + c.archiveURL(), Fraction: 1}
 			return nil
 		}}
 	}
@@ -206,21 +249,26 @@ func (c Config) downloadPhase(tarball string) Phase {
 			ch <- Progress{Line: "already downloaded", Fraction: 1}
 			return nil
 		}
-		return downloadFile(ctx, ch, c.Version.URL, tarball)
+		return downloadFile(ctx, ch, c.archiveURL(), tarball)
 	}}
 }
 
 func (c Config) extractPhase(tarball, src string) Phase {
 	title := "Extract source"
+	flag := "xf" // GNU/libarchive tar auto-detects xz
+	if c.useGzip() {
+		flag = "xzf"
+	}
 	if c.DryRun {
 		return Phase{Title: title, Run: func(ctx context.Context, ch chan<- Progress) error {
-			ch <- Progress{Line: "[dry-run] tar xf " + tarball, Fraction: 1}
+			ch <- Progress{Line: "[dry-run] tar " + flag + " " + tarball, Fraction: 1}
 			return nil
 		}}
 	}
 	return Phase{Title: title, Run: func(ctx context.Context, ch chan<- Progress) error {
 		_ = os.RemoveAll(src)
-		return extractTar(ctx, ch, tarball, sys.CacheDir())
+		ch <- Progress{Line: "extracting " + filepath.Base(tarball), Fraction: -1}
+		return streamExec(ctx, ch, sys.CacheDir(), nil, "tar", flag, tarball)
 	}}
 }
 

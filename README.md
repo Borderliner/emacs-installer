@@ -110,14 +110,33 @@ by default) usable from inside the TUI.
 
 ## Supported systems
 
-**Package managers / families:** Debian·Ubuntu·Mint·Pop·… (`apt`),
-Fedora·RHEL·Rocky·Alma (`dnf`), Arch·Manjaro·EndeavourOS (`pacman`),
-openSUSE·SLES (`zypper`), Alpine (`apk`), Void (`xbps`), Gentoo (`emerge`,
-best-effort), macOS (`brew`).
+**Linux** (by package manager):
 
-**Init systems for the daemon:** systemd, OpenRC, runit, SysVinit, dinit, and
-macOS launchd. systemd and launchd get clean per-user units; the others install
-a system service that runs the daemon as your user.
+| Manager    | Distributions                                                        |
+|------------|----------------------------------------------------------------------|
+| `apt`      | Debian 12/13, Ubuntu (+ Mint, Pop!_OS, elementary, Zorin, Kali, …)    |
+| `dnf`      | Fedora, RHEL, AlmaLinux 9/10, Rocky 9/10, CentOS Stream               |
+| `dnf`      | OpenMandriva (`lib64`-style names)                                    |
+| `pacman`   | Arch, Manjaro, EndeavourOS, Artix, KaOS                              |
+| `zypper`   | openSUSE Tumbleweed / Leap / Slowroll, SLES                          |
+| `eopkg`    | Solus                                                                 |
+| `slackpkg` | Slackware                                                            |
+| `apk`      | Alpine · `xbps` Void · `emerge` Gentoo                               |
+
+**BSD:** FreeBSD (`pkg`), OpenBSD (`pkg_add`), NetBSD (`pkgin`). Builds with
+`gmake`; OpenBSD fetches the `.tar.gz` release since its base `tar` can't unpack
+`.xz`. Native compilation defaults **off** (libgccjit is rarely packaged).
+
+**macOS:** Homebrew (`brew`) with a NextStep `.app` build.
+
+**Init systems for the daemon:** systemd, OpenRC, runit, SysVinit, dinit
+(Linux); FreeBSD / OpenBSD / NetBSD `rc.d`; Slackware `rc.local`; macOS
+`launchd`. systemd and launchd get clean per-user units; the rest install a
+system service that runs the daemon as your user.
+
+> Package names on the less common platforms are best-effort — the installer
+> searches your distro's repositories at runtime and flags anything it can't
+> confirm before installing anything.
 
 ## Build features explained
 

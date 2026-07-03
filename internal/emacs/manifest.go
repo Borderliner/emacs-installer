@@ -54,7 +54,7 @@ func (c Config) manifest() Manifest {
 		User:          c.Info.User,
 		Home:          c.Info.Home,
 		Symlink:       c.Symlink,
-		Desktop:       c.Desktop && c.Info.OS == "linux",
+		Desktop:       c.desktopOK(),
 		Daemon:        c.EnableDaemon,
 		ServiceInit:   string(c.Init),
 	}
@@ -166,8 +166,8 @@ func (u UninstallConfig) teardownItems() (remove []action.FileSpec, cmds []actio
 		remove = append(remove, r...)
 		cmds = append(cmds, c...)
 	}
-	if m.Desktop && u.osName() == "linux" {
-		remove = append(remove, desktop.Generate(u.prefix(), true, u.home())...)
+	if m.Desktop && u.osName() != "darwin" {
+		remove = append(remove, desktop.Generate(u.prefix(), true, u.home(), u.osName())...)
 	}
 	return remove, cmds
 }

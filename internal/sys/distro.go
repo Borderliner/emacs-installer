@@ -3,6 +3,7 @@ package sys
 import (
 	"bufio"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 )
@@ -13,15 +14,21 @@ import (
 type Family string
 
 const (
-	FamilyDebian  Family = "debian" // apt: Debian, Ubuntu, Mint, Pop!_OS, ...
-	FamilyFedora  Family = "fedora" // dnf: Fedora, RHEL, Rocky, Alma, CentOS
-	FamilyArch    Family = "arch"   // pacman: Arch, Manjaro, EndeavourOS, ...
-	FamilySUSE    Family = "suse"   // zypper: openSUSE, SLES
-	FamilyAlpine  Family = "alpine" // apk
-	FamilyVoid    Family = "void"   // xbps
-	FamilyGentoo  Family = "gentoo" // portage/emerge
-	FamilyMacOS   Family = "macos"  // homebrew
-	FamilyUnknown Family = "unknown"
+	FamilyDebian    Family = "debian"    // apt: Debian, Ubuntu, Mint, Pop!_OS, ...
+	FamilyFedora    Family = "fedora"    // dnf: Fedora, RHEL, Rocky, Alma, CentOS
+	FamilyArch      Family = "arch"      // pacman: Arch, Manjaro, EndeavourOS, Artix, KaOS
+	FamilySUSE      Family = "suse"      // zypper: openSUSE, SLES
+	FamilyAlpine    Family = "alpine"    // apk
+	FamilyVoid      Family = "void"      // xbps
+	FamilyGentoo    Family = "gentoo"    // portage/emerge
+	FamilySolus     Family = "solus"     // eopkg
+	FamilyMandriva  Family = "mandriva"  // dnf/rpm (OpenMandriva, lib64 naming)
+	FamilySlackware Family = "slackware" // slackpkg
+	FamilyFreeBSD   Family = "freebsd"   // pkg
+	FamilyOpenBSD   Family = "openbsd"   // pkg_add
+	FamilyNetBSD    Family = "netbsd"    // pkgin
+	FamilyMacOS     Family = "macos"     // homebrew
+	FamilyUnknown   Family = "unknown"
 )
 
 // Distro is the parsed contents of /etc/os-release, plus the Family we mapped
@@ -46,24 +53,35 @@ var idToFamily = map[string]Family{
 	"fedora": FamilyFedora, "rhel": FamilyFedora, "centos": FamilyFedora,
 	"rocky": FamilyFedora, "almalinux": FamilyFedora, "ol": FamilyFedora,
 	"amzn": FamilyFedora, "nobara": FamilyFedora, "scientific": FamilyFedora,
-	// Arch / pacman
+	// Arch / pacman (KaOS is independent but pacman-based)
 	"arch": FamilyArch, "manjaro": FamilyArch, "endeavouros": FamilyArch,
 	"artix": FamilyArch, "cachyos": FamilyArch, "garuda": FamilyArch,
-	"arcolinux": FamilyArch,
+	"arcolinux": FamilyArch, "kaos": FamilyArch,
 	// SUSE / zypper
 	"opensuse": FamilySUSE, "opensuse-leap": FamilySUSE,
 	"opensuse-tumbleweed": FamilySUSE, "opensuse-slowroll": FamilySUSE,
 	"sles": FamilySUSE, "sled": FamilySUSE, "suse": FamilySUSE,
+	// OpenMandriva (rpm + dnf, but lib64-style package names)
+	"openmandriva": FamilyMandriva, "openmandriva-rome": FamilyMandriva,
+	"openmandriva-rock": FamilyMandriva,
 	// Others
-	"alpine": FamilyAlpine, "postmarketos": FamilyAlpine,
+	"solus":     FamilySolus,
+	"slackware": FamilySlackware,
+	"alpine":    FamilyAlpine, "postmarketos": FamilyAlpine,
 	"void":   FamilyVoid,
 	"gentoo": FamilyGentoo, "funtoo": FamilyGentoo,
+	// BSDs (usually detected by GOOS, but map their os-release IDs too)
+	"freebsd": FamilyFreeBSD, "openbsd": FamilyOpenBSD, "netbsd": FamilyNetBSD,
 }
 
-// DetectDistro reads /etc/os-release (or reports macOS) and classifies the host.
+// DetectDistro reads /etc/os-release (or reports macOS/BSD) and classifies the
+// host.
 func DetectDistro() Distro {
-	if runtime.GOOS == "darwin" {
+	switch runtime.GOOS {
+	case "darwin":
 		return Distro{ID: "macos", Name: macOSName(), Family: FamilyMacOS}
+	case "freebsd", "openbsd", "netbsd":
+		return detectBSD()
 	}
 	d := parseOSRelease("/etc/os-release")
 	if d.ID == "" {
@@ -71,6 +89,37 @@ func DetectDistro() Distro {
 	}
 	d.Family = classify(d)
 	return d
+}
+
+// detectBSD classifies a BSD by GOOS. FreeBSD and NetBSD ship /etc/os-release
+// (used for a nicer name); OpenBSD does not, so we fall back to uname.
+func detectBSD() Distro {
+	d := parseOSRelease("/etc/os-release")
+	switch runtime.GOOS {
+	case "freebsd":
+		d.Family = FamilyFreeBSD
+	case "openbsd":
+		d.Family = FamilyOpenBSD
+	case "netbsd":
+		d.Family = FamilyNetBSD
+	}
+	if d.ID == "" {
+		d.ID = runtime.GOOS
+	}
+	if d.Name == "" {
+		d.Name = unameName(runtime.GOOS)
+	}
+	return d
+}
+
+// unameName returns "OpenBSD 7.5"-style label, falling back to the GOOS.
+func unameName(fallback string) string {
+	if out, err := exec.Command("uname", "-sr").Output(); err == nil {
+		if s := strings.TrimSpace(string(out)); s != "" {
+			return s
+		}
+	}
+	return fallback
 }
 
 // classify resolves a Distro to a Family, first by exact ID then by walking the

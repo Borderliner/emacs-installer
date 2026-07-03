@@ -230,6 +230,13 @@ func DefaultSelection(env Env) Selection {
 	for _, t := range Toggles(env) {
 		sel.Enabled[t.Key] = t.Default
 	}
+	// libgccjit is rarely packaged on the BSDs, so default native compilation
+	// off there rather than have the build fail on a missing dependency.
+	switch env.OS {
+	case "freebsd", "openbsd", "netbsd":
+		sel.Enabled[keyNativeComp] = false
+		sel.Enabled[keyNativeAOT] = false
+	}
 	return sel
 }
 

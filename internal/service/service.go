@@ -43,6 +43,14 @@ func Generate(p Params) ([]action.FileSpec, []action.Command, error) {
 		return p.sysv()
 	case sys.InitDinit:
 		return p.dinit()
+	case sys.InitSlackware:
+		return p.slackware()
+	case sys.InitFreeBSD:
+		return p.freebsd()
+	case sys.InitOpenBSD:
+		return p.openbsd()
+	case sys.InitNetBSD:
+		return p.netbsd()
 	case sys.InitLaunchd:
 		return p.launchd()
 	default:
@@ -64,6 +72,14 @@ func Summary(p Params) string {
 		return "SysVinit script /etc/init.d/emacs, registered for the standard runlevels"
 	case sys.InitDinit:
 		return "dinit service /etc/dinit.d/emacs, enabled with dinitctl"
+	case sys.InitSlackware:
+		return "/etc/rc.d/rc.emacs, started from /etc/rc.d/rc.local at boot"
+	case sys.InitFreeBSD:
+		return "rc.d service /usr/local/etc/rc.d/emacs, enabled via sysrc emacs_enable=YES"
+	case sys.InitOpenBSD:
+		return "rc.d service /etc/rc.d/emacs, enabled with rcctl enable emacs"
+	case sys.InitNetBSD:
+		return "rc.d service /etc/rc.d/emacs, enabled via emacs=YES in /etc/rc.conf"
 	case sys.InitLaunchd:
 		return "launchd LaunchAgent (~/Library/LaunchAgents/gnu.emacs.daemon.plist)"
 	default:
@@ -116,6 +132,28 @@ func Teardown(p Params) (remove []action.FileSpec, cmds []action.Command) {
 		return []action.FileSpec{del("/etc/dinit.d/emacs", true)}, []action.Command{
 			{Argv: []string{"dinitctl", "stop", "emacs"}, System: true, Label: "stop daemon"},
 			{Argv: []string{"dinitctl", "disable", "emacs"}, System: true, Label: "disable service"},
+		}
+	case sys.InitSlackware:
+		removeLine := `[ -f /etc/rc.d/rc.local ] && sed -i '/rc.emacs/d' /etc/rc.d/rc.local || true`
+		return []action.FileSpec{del("/etc/rc.d/rc.emacs", true)}, []action.Command{
+			{Argv: []string{"sh", "-c", "[ -x /etc/rc.d/rc.emacs ] && /etc/rc.d/rc.emacs stop || true"}, System: true, Label: "stop daemon"},
+			{Argv: []string{"sh", "-c", removeLine}, System: true, Label: "remove from rc.local"},
+		}
+	case sys.InitFreeBSD:
+		return []action.FileSpec{del("/usr/local/etc/rc.d/emacs", true)}, []action.Command{
+			{Argv: []string{"service", "emacs", "stop"}, System: true, Label: "stop daemon"},
+			{Argv: []string{"sysrc", "-x", "emacs_enable"}, System: true, Label: "disable at boot"},
+		}
+	case sys.InitOpenBSD:
+		return []action.FileSpec{del("/etc/rc.d/emacs", true)}, []action.Command{
+			{Argv: []string{"rcctl", "stop", "emacs"}, System: true, Label: "stop daemon"},
+			{Argv: []string{"rcctl", "disable", "emacs"}, System: true, Label: "disable service"},
+		}
+	case sys.InitNetBSD:
+		removeLine := `[ -f /etc/rc.conf ] && sed -i '/^emacs=/d' /etc/rc.conf || true`
+		return []action.FileSpec{del("/etc/rc.d/emacs", true)}, []action.Command{
+			{Argv: []string{"sh", "-c", "[ -x /etc/rc.d/emacs ] && /etc/rc.d/emacs stop || true"}, System: true, Label: "stop daemon"},
+			{Argv: []string{"sh", "-c", removeLine}, System: true, Label: "disable in rc.conf"},
 		}
 	case sys.InitLaunchd:
 		plist := filepath.Join(p.Home, "Library/LaunchAgents/gnu.emacs.daemon.plist")

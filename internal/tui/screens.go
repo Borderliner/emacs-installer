@@ -326,7 +326,7 @@ func (m Model) depsView() string {
 
 func (m Model) serviceRows() []string {
 	rows := []string{"daemon", "init", "symlink"}
-	if m.info.OS == "linux" {
+	if m.info.OS != "darwin" {
 		rows = append(rows, "desktop")
 	}
 	return rows
@@ -475,7 +475,7 @@ func (m Model) reviewView() string {
 	} else {
 		add("Daemon", "disabled")
 	}
-	add("Launchers", yesno(m.desktop && m.info.OS == "linux"))
+	add("Launchers", yesno(m.desktop && m.info.OS != "darwin"))
 	add("PATH link", yesno(m.symlink))
 
 	b.WriteString("\n" + stSubtle.Render("configure ") + stMuted.Render(wrap(strings.Join(m.cfgArgsPreview(), " "), m.bodyWidth())) + "\n")

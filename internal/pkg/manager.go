@@ -151,6 +151,36 @@ var managers = map[sys.Family]*Manager{
 		install: func(p []string) string { return "emerge --quiet --noreplace " + join(p) },
 		// portage atom resolution is expensive to probe cheaply; trust the catalog.
 	},
+	sys.FamilySolus: {
+		Name: "eopkg", Escalate: true,
+		install:   func(p []string) string { return "eopkg install -y " + join(p) },
+		available: func(pkg string) bool { return exitOK("eopkg", "info", pkg) },
+	},
+	sys.FamilyMandriva: {
+		Name: "dnf", Escalate: true,
+		install:   func(p []string) string { return "dnf install -y " + join(p) },
+		available: func(pkg string) bool { return exitOK("sh", "-c", "dnf -q info "+shellQuote(pkg)+" >/dev/null 2>&1") },
+	},
+	sys.FamilySlackware: {
+		Name: "slackpkg", Escalate: true,
+		install: func(p []string) string { return "slackpkg -batch=on -default_answer=y install " + join(p) },
+		// slackpkg has no cheap availability query; trust the catalog.
+	},
+	sys.FamilyFreeBSD: {
+		Name: "pkg", Escalate: true,
+		install:   func(p []string) string { return "pkg install -y " + join(p) },
+		available: func(pkg string) bool { return exitOK("pkg", "search", "-e", "-q", pkg) },
+	},
+	sys.FamilyOpenBSD: {
+		Name: "pkg_add", Escalate: true,
+		install:   func(p []string) string { return "pkg_add " + join(p) },
+		available: func(pkg string) bool { return outNonEmpty("pkg_info", "-Q", pkg) },
+	},
+	sys.FamilyNetBSD: {
+		Name: "pkgin", Escalate: true,
+		install:   func(p []string) string { return "pkgin -y install " + join(p) },
+		available: func(pkg string) bool { return outNonEmpty("pkgin", "search", pkg) },
+	},
 	sys.FamilyMacOS: {
 		Name: "brew", Escalate: false,
 		install:   func(p []string) string { return "brew install " + join(p) },

@@ -11,13 +11,17 @@ import (
 type InitSystem string
 
 const (
-	InitSystemd InitSystem = "systemd"
-	InitOpenRC  InitSystem = "openrc"
-	InitRunit   InitSystem = "runit"
-	InitSysV    InitSystem = "sysvinit"
-	InitDinit   InitSystem = "dinit"
-	InitLaunchd InitSystem = "launchd" // macOS
-	InitUnknown InitSystem = "unknown"
+	InitSystemd   InitSystem = "systemd"
+	InitOpenRC    InitSystem = "openrc"
+	InitRunit     InitSystem = "runit"
+	InitSysV      InitSystem = "sysvinit"
+	InitDinit     InitSystem = "dinit"
+	InitSlackware InitSystem = "slackware" // BSD-style rc via /etc/rc.d/rc.local
+	InitFreeBSD   InitSystem = "freebsd"   // rc.d + sysrc
+	InitOpenBSD   InitSystem = "openbsd"   // rc.d + rcctl
+	InitNetBSD    InitSystem = "netbsd"    // rc.d + rc.conf
+	InitLaunchd   InitSystem = "launchd"   // macOS
+	InitUnknown   InitSystem = "unknown"
 )
 
 // Title is a human-facing label for the init system.
@@ -33,6 +37,14 @@ func (i InitSystem) Title() string {
 		return "SysVinit"
 	case InitDinit:
 		return "dinit"
+	case InitSlackware:
+		return "Slackware rc"
+	case InitFreeBSD:
+		return "FreeBSD rc.d"
+	case InitOpenBSD:
+		return "OpenBSD rc.d"
+	case InitNetBSD:
+		return "NetBSD rc.d"
 	case InitLaunchd:
 		return "launchd"
 	default:
@@ -44,8 +56,20 @@ func (i InitSystem) Title() string {
 // first (the most reliable signal), then falls back to well-known filesystem
 // and binary markers for setups where PID 1 is a generic /sbin/init.
 func DetectInit() InitSystem {
-	if runtime.GOOS == "darwin" {
+	switch runtime.GOOS {
+	case "darwin":
 		return InitLaunchd
+	case "freebsd":
+		return InitFreeBSD
+	case "openbsd":
+		return InitOpenBSD
+	case "netbsd":
+		return InitNetBSD
+	}
+
+	// Slackware is Linux but uses BSD-style rc scripts, not a service manager.
+	if exists("/etc/slackware-version") {
+		return InitSlackware
 	}
 
 	switch pid1Comm() {
@@ -82,8 +106,18 @@ func DetectInit() InitSystem {
 // host, so the UI can offer a manual override when detection is ambiguous
 // (Artix, for example, ships several).
 func AvailableInits() []InitSystem {
-	if runtime.GOOS == "darwin" {
+	switch runtime.GOOS {
+	case "darwin":
 		return []InitSystem{InitLaunchd}
+	case "freebsd":
+		return []InitSystem{InitFreeBSD}
+	case "openbsd":
+		return []InitSystem{InitOpenBSD}
+	case "netbsd":
+		return []InitSystem{InitNetBSD}
+	}
+	if exists("/etc/slackware-version") {
+		return []InitSystem{InitSlackware}
 	}
 	var out []InitSystem
 	add := func(i InitSystem, ok bool) {

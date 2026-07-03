@@ -125,13 +125,3 @@ func downloadFile(ctx context.Context, ch chan<- Progress, url, dest string) err
 	ch <- Progress{Fraction: 1, Line: fmt.Sprintf("downloaded %.1f MiB", float64(read)/(1<<20))}
 	return os.Rename(part, dest)
 }
-
-// extractTar unpacks a tarball into destDir using the system tar (which handles
-// xz transparently and is faster than a pure-Go decode for a full source tree).
-func extractTar(ctx context.Context, ch chan<- Progress, tarball, destDir string) error {
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
-		return err
-	}
-	ch <- Progress{Line: "extracting " + filepath.Base(tarball), Fraction: -1}
-	return streamExec(ctx, ch, destDir, nil, "tar", "xf", tarball)
-}
